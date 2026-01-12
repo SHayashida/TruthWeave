@@ -6,7 +6,7 @@ from pathlib import Path
 
 def check(tex_path: Path) -> None:
     if not tex_path.exists():
-        raise SystemExit("Missing paper/main.tex")
+        raise SystemExit(f"Missing tex file: {tex_path}")
 
     decimal_pattern = re.compile(r"\b\d+\.\d+\b")
     percent_pattern = re.compile(r"\b\d+%")
@@ -20,7 +20,7 @@ def check(tex_path: Path) -> None:
             violations.append(f"line {idx}: {raw_line.strip()}")
 
     if violations:
-        message = "Manual numbers detected in paper/main.tex:\n" + "\n".join(
+        message = f"Manual numbers detected in {tex_path}:\n" + "\n".join(
             violations
         )
         raise SystemExit(message)

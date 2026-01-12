@@ -1,0 +1,11 @@
+{
+  "generated": {
+    "generated_at": "2026-01-12T14:33:37.428507+00:00",
+    "variables_tex_sha256": "49b353b1374396ceab9f69b2709c79687e8794adb86ddceadaad7813f0df7dfc"
+  },
+  "source": {
+    "metrics_json_path": "runs/20260112_233326_example/metrics.json",
+    "metrics_json_sha256": "9fc2f6cd988451c05b5e248a9821a18ce90da0b3c906fb89c28ba3b9300bad84",
+    "run_dir": "runs/20260112_233326_example"
+  }
+}

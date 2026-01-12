@@ -2,9 +2,12 @@ __pycache__/
 *.pyc
 .venv/
 
-paper/auto/
-paper/figures/
-paper/tables/
+papers/**/auto/
+papers/**/figures/
+papers/**/tables/
+papers/**/build/
+
+artifacts/
 
 runs/
 data/

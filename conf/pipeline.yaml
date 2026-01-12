@@ -1,0 +1,7 @@
+latest:
+  runs_dir: runs
+  selector: mtime
+
+assets:
+  metrics_source: latest
+  aggregations: []

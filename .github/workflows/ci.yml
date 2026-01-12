@@ -18,6 +18,6 @@ jobs:
       - name: Run example
         run: make run
       - name: Build assets
-        run: make assets
+        run: make assets-all
       - name: Check
         run: make check

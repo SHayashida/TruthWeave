@@ -1,0 +1,8 @@
+paper_id: example
+main: main.tex
+engine: "latexmk -pdf -interaction=nonstopmode -halt-on-error -output-directory=papers/example/build"
+inputs:
+  metrics_source: latest
+style:
+  TEXINPUTS:
+    - styles

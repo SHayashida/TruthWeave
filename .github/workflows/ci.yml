@@ -1,0 +1,23 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: uv sync
+      - name: Run example
+        run: make run
+      - name: Build assets
+        run: make assets
+      - name: Check
+        run: make check

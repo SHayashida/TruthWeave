@@ -1,0 +1,7 @@
+# @package _global_
+
+experiment:
+  name: example
+
+example:
+  n: 1000

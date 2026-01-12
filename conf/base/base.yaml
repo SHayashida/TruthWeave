@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+  - exp: example
+
+project:
+  name: paperops-template
+  runs_dir: runs
+
+runtime:
+  device: cuda
+  dtype: fp16
+  deterministic: true
+  seed: 1234
+
+logging:
+  save_code_snapshot: true
+  save_env_snapshot: true
+  save_hardware_snapshot: true
+
+experiment:
+  name: example
+  output_subdir: "${now:%Y%m%d_%H%M%S}_${experiment.name}"

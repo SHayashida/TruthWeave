@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+
+paper/auto/
+paper/figures/
+paper/tables/
+
+runs/
+data/
+
+.DS_Store

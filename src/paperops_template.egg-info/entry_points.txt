@@ -1,0 +1,2 @@
+[console_scripts]
+paperops = paperops.cli:main

@@ -20,6 +20,18 @@ uv run paperops check --paper example
 - `paperops build-paper --paper <paper_id>` builds the LaTeX paper using the engine in `paperops.yml`.
 - Make targets: `make assets PAPER=<paper_id>`, `make paper PAPER=<paper_id>`, `make assets-all`, `make paper-all`.
 
+## How to add experiments (use create-exp)
+
+```bash
+uv run paperops create-exp myexp
+uv run paperops run exp=myexp
+```
+
+## Check modes
+
+- `paperops check` defaults to dev mode (STRUCTURE/PAPER_NUMBERS warn only).
+- `paperops check --mode ci` treats STRUCTURE/PAPER_NUMBERS as failures.
+
 ## B運用（投稿先ごと）最短手順
 
 ```bash

@@ -1,0 +1,18 @@
+paper_id: demo_paper
+engine: latexmk
+main: main.tex
+bib: refs.bib
+paths:
+  auto_dir: auto
+  figures_dir: figures
+  tables_dir: tables
+style:
+  TEXINPUTS:
+  - styles
+  - .
+build:
+  latexmk_args:
+  - -pdf
+  - -interaction=nonstopmode
+inputs:
+  metrics_source: latest

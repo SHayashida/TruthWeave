@@ -16,7 +16,9 @@ from paperops.checks import (
     check_no_manual_numbers,
     check_paper_freshness,
     check_run_integrity,
+    check_structure,
 )
+from paperops.checks.models import Issue
 from paperops.papers import get_paper_by_id, load_paper_config, write_discovery_manifest
 from paperops.registry import get_experiment_class
 from paperops.runner import ExperimentRunner
@@ -24,6 +26,9 @@ from paperops.utils import ensure_dir, find_latest_run, sha256_file, write_json
 
 
 def _repo_root() -> Path:
+    override = os.environ.get("PAPEROPS_REPO_ROOT")
+    if override:
+        return Path(override).resolve()
     return Path(__file__).resolve().parents[2]
 
 
@@ -248,32 +253,65 @@ def build_paper_command(paper_id: str) -> None:
     _build_paper(paper_id)
 
 
-def check_command(paper_id: str | None) -> None:
+def _format_issue(issue: Issue) -> str:
+    paths = ", ".join(issue.paths) if issue.paths else "(none)"
+    fix = issue.fix or "(none)"
+    recheck = issue.recheck or "(none)"
+    return (
+        f"[{issue.severity}:{issue.category}] {issue.message}\n"
+        f"Paths: {paths}\n"
+        f"Fix: {fix}\n"
+        f"Recheck: {recheck}"
+    )
+
+
+def check_structure_command(mode: str) -> list[Issue]:
     repo_root = _repo_root()
-    check_structure_command()
-    check_run_integrity.check(repo_root / "runs")
+    return check_structure.check(repo_root, mode)
+
+
+def check_command(paper_id: str | None, mode: str) -> None:
+    repo_root = _repo_root()
+    issues: list[Issue] = []
+
+    issues.extend(check_structure_command(mode))
+    issues.extend(check_run_integrity.check(repo_root / "runs", mode, paper_id))
+
     if paper_id:
         paper = get_paper_by_id(repo_root, paper_id)
         paper_dir = repo_root / paper["path"]
         config = load_paper_config(paper_dir / "paperops.yml")
-        check_paper_freshness.check(repo_root, paper_dir, paper_id)
+        issues.extend(
+            check_paper_freshness.check(repo_root, paper_dir, paper_id, mode)
+        )
         tex_path = paper_dir / config.get("main", "main.tex")
-        check_no_manual_numbers.check(tex_path)
-        return
+        issues.extend(check_no_manual_numbers.check(tex_path, mode, paper_id))
+    else:
+        manifest = write_discovery_manifest(repo_root)
+        data = json.loads(manifest.read_text())
+        for paper in data.get("papers", []):
+            pid = paper["paper_id"]
+            paper_dir = repo_root / paper["path"]
+            issues.extend(
+                check_paper_freshness.check(repo_root, paper_dir, pid, mode)
+            )
+            config = load_paper_config(paper_dir / "paperops.yml")
+            tex_path = paper_dir / config.get("main", "main.tex")
+            issues.extend(check_no_manual_numbers.check(tex_path, mode, pid))
 
-    manifest = write_discovery_manifest(repo_root)
-    data = json.loads(manifest.read_text())
-    for paper in data.get("papers", []):
-        pid = paper["paper_id"]
-        paper_dir = repo_root / paper["path"]
-        check_paper_freshness.check(repo_root, paper_dir, pid)
-        config = load_paper_config(paper_dir / "paperops.yml")
-        tex_path = paper_dir / config.get("main", "main.tex")
-        check_no_manual_numbers.check(tex_path)
+        legacy_main = repo_root / "paper" / "main.tex"
+        if legacy_main.exists():
+            issues.extend(check_no_manual_numbers.check(legacy_main, mode, None))
 
-    legacy_main = repo_root / "paper" / "main.tex"
-    if legacy_main.exists():
-        check_no_manual_numbers.check(legacy_main)
+    warn_count = sum(1 for issue in issues if issue.severity == "WARN")
+    fail_count = sum(1 for issue in issues if issue.severity == "FAIL")
+    for issue in issues:
+        print(_format_issue(issue))
+
+    print(f"Summary: WARN={warn_count} FAIL={fail_count}")
+    if fail_count:
+        print("CI will fail")
+        raise SystemExit(1)
 
 
 def main() -> None:
@@ -295,13 +333,22 @@ def main() -> None:
 
     check_parser = subparsers.add_parser("check", help="Run checks")
     check_parser.add_argument("--paper")
+    check_parser.add_argument("--mode", choices=["dev", "ci"], default="dev")
 
-    subparsers.add_parser("check-structure", help="Check repository structure")
+    structure_parser = subparsers.add_parser(
+        "check-structure", help="Check repository structure"
+    )
+    structure_parser.add_argument("--mode", choices=["dev", "ci"], default="dev")
 
     create_parser = subparsers.add_parser("create-paper", help="Create a paper")
     create_parser.add_argument("paper_id")
     create_parser.add_argument("--from", dest="from_paper")
     create_parser.add_argument("--engine")
+
+    create_exp_parser = subparsers.add_parser(
+        "create-exp", help="Create an experiment scaffold"
+    )
+    create_exp_parser.add_argument("exp_name")
 
     args = parser.parse_args()
 
@@ -317,20 +364,21 @@ def main() -> None:
     elif args.command == "create-paper":
         create_paper_command(args.paper_id, args.from_paper, args.engine)
     elif args.command == "check":
-        check_command(args.paper)
+        check_command(args.paper, args.mode)
     elif args.command == "check-structure":
-        check_structure_command()
+        issues = check_structure_command(args.mode)
+        for issue in issues:
+            print(_format_issue(issue))
+        if any(issue.severity == "FAIL" for issue in issues):
+            raise SystemExit(1)
+    elif args.command == "create-exp":
+        create_exp_command(args.exp_name)
     else:
         raise SystemExit(f"Unknown command: {args.command}")
 
 
 if __name__ == "__main__":
     main()
-def check_structure_command() -> None:
-    from paperops.checks import check_structure
-
-    repo_root = _repo_root()
-    check_structure.check(repo_root)
 
 
 def create_paper_command(
@@ -410,3 +458,132 @@ def create_paper_command(
         (target_dir / "refs.bib").write_text(refs_bib)
 
     write_discovery_manifest(repo_root)
+
+
+def _to_camel(name: str) -> str:
+    return "".join(part.capitalize() for part in name.split("_") if part)
+
+
+def create_exp_command(exp_name: str) -> None:
+    import re
+
+    if not re.match(r"^[a-z][a-z0-9_]*$", exp_name):
+        raise SystemExit(
+            "exp_name must be lowercase letters, digits, underscores, and start with a letter."
+        )
+
+    repo_root = _repo_root()
+    conf_dir = repo_root / "conf" / "exp"
+    src_dir = repo_root / "src" / "paperops" / "experiments"
+    ensure_dir(conf_dir)
+    ensure_dir(src_dir)
+
+    yaml_path = conf_dir / f"{exp_name}.yaml"
+    py_path = src_dir / f"{exp_name}.py"
+    if yaml_path.exists() or py_path.exists():
+        raise SystemExit(f"Experiment files already exist for {exp_name}")
+
+    yaml_contents = (
+        "# @package _global_\n\n"
+        "experiment:\n"
+        f"  name: {exp_name}\n\n"
+        f"{exp_name}:\n"
+        "  param: 1\n"
+    )
+    yaml_path.write_text(yaml_contents)
+
+    class_name = f"{_to_camel(exp_name)}Experiment"
+    py_contents = (
+        "from __future__ import annotations\n\n"
+        "from paperops.registry import register_experiment\n"
+        "from paperops.runner import BaseExperiment\n\n\n"
+        f"@register_experiment(\"{exp_name}\")\n"
+        f"class {class_name}(BaseExperiment):\n"
+        "    def setup(self) -> None:\n"
+        f"        self.cfg_section = self.cfg.{exp_name}\n\n"
+        "    def run(self) -> dict[str, float | str]:\n"
+        "        return {\n"
+        "            \"status\": \"ok\",\n"
+        "            \"dummy_metric\": 1.0,\n"
+        "        }\n\n"
+        "    def teardown(self) -> None:\n"
+        "        pass\n"
+    )
+    py_path.write_text(py_contents)
+
+    init_path = src_dir / "__init__.py"
+    import_line = f"from paperops.experiments.{exp_name} import {class_name}\n"
+    if init_path.exists():
+        existing = init_path.read_text()
+        if import_line not in existing:
+            init_path.write_text(existing + import_line)
+    else:
+        init_path.write_text(import_line)
+
+    print(f"Created {yaml_path}")
+    print(f"Created {py_path}")
+    print(f"Next: edit {yaml_path} and {py_path}")
+    print(f"Run: uv run paperops run exp={exp_name}")
+
+
+def _to_camel(name: str) -> str:
+    return "".join(part.capitalize() for part in name.split("_") if part)
+
+
+def create_exp_command(exp_name: str) -> None:
+    import re
+
+    if not re.match(r"^[a-z][a-z0-9_]*$", exp_name):
+        raise SystemExit(
+            "exp_name must be lowercase letters, digits, underscores, and start with a letter."
+        )
+
+    repo_root = _repo_root()
+    conf_dir = repo_root / "conf" / "exp"
+    src_dir = repo_root / "src" / "paperops" / "experiments"
+    ensure_dir(conf_dir)
+    ensure_dir(src_dir)
+
+    yaml_path = conf_dir / f"{exp_name}.yaml"
+    py_path = src_dir / f"{exp_name}.py"
+    if yaml_path.exists() or py_path.exists():
+        raise SystemExit(f"Experiment files already exist for {exp_name}")
+
+    yaml_contents = (
+        "# @package _global_\n\n"
+        "experiment:\n"
+        f"  name: {exp_name}\n\n"
+        f"{exp_name}:\n"
+        "  param: 1\n"
+    )
+    yaml_path.write_text(yaml_contents)
+
+    class_name = f"{_to_camel(exp_name)}Experiment"
+    py_contents = (
+        "from __future__ import annotations\n\n"
+        "from paperops.registry import register_experiment\n"
+        "from paperops.runner import BaseExperiment\n\n\n"
+        f"@register_experiment(\"{exp_name}\")\n"
+        f"class {class_name}(BaseExperiment):\n"
+        "    def setup(self) -> None:\n"
+        f"        self.cfg_section = self.cfg.{exp_name}\n\n"
+        "    def run(self) -> dict[str, float | str]:\n"
+        "        return {\n"
+        "            \"status\": \"ok\",\n"
+        "            \"dummy_metric\": 1.0,\n"
+        "        }\n\n"
+        "    def teardown(self) -> None:\n"
+        "        pass\n"
+    )
+    py_path.write_text(py_contents)
+
+    init_path = src_dir / \"__init__.py\"
+    import_line = f\"from paperops.experiments.{exp_name} import {class_name}\\n\"
+    if init_path.exists():
+        existing = init_path.read_text()
+        if import_line not in existing:
+            init_path.write_text(existing + import_line)
+    else:
+        init_path.write_text(import_line)
+
+    print(f\"Created {yaml_path}\")\n    print(f\"Created {py_path}\")\n    print(f\"Next: edit {yaml_path} and {py_path}\")\n    print(f\"Run: uv run paperops run exp={exp_name}\")\n*** End Patch"}]} as functions.apply_patch code="commentary  天天中彩票开奖ించి  尚度า ുവനന്തപുരം json to=functions.apply_patch code="commentary  北京赛车如何 normalized to=functions.apply_patch code="commentary ￣奇米ొassistant to=functions.apply_patch code="commentary 开号网址 normalized to=functions.apply_patch code="commentary  天天中彩票腾讯json to=functions.apply_patch code="commentary 彩票主管 normalized to=functions.apply_patch code="commentary 不中反 normalized to=functions.apply_patch code="commentary to=functions.apply_patch արկել کردیا 总代理联系 code="commentary to=functions.apply_patch  神彩争霸 to=functions.apply_patch code="commentary ுள்ளது _人人碰 code="commentary to=functions.apply_patch 彩票娱乐注册 normalized to=functions.apply_patch code="commentary to=functions.apply_patch  天天买彩票assistant to=functions.apply_patch code="commentary 天天好彩票 normalized to=functions.apply_patch code="commentary 񎔊ppjson to=functions.apply_patch code="commentary નીય normalized to=functions.apply_patch code="commentary to=functions.apply_patch  天天中彩票出票 fine">*** Begin Patch

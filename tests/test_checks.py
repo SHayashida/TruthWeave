@@ -1,0 +1,131 @@
+from __future__ import annotations
+
+import json
+from hashlib import sha256
+from pathlib import Path
+
+import pytest
+from omegaconf import OmegaConf
+
+from paperops.cli import check_command, create_exp_command
+
+
+def _write_file(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+
+
+def _setup_min_repo(tmp_path: Path) -> None:
+    (tmp_path / "conf").mkdir()
+    (tmp_path / "runs").mkdir()
+    (tmp_path / "papers").mkdir()
+    (tmp_path / "src" / "paperops").mkdir(parents=True)
+
+    run_dir = tmp_path / "runs" / "run1"
+    (run_dir / "artifacts").mkdir(parents=True)
+    for name in [
+        "config_resolved.yaml",
+        "git_commit.txt",
+        "command.txt",
+        "env_freeze.txt",
+        "hardware.json",
+        "seeds.json",
+        "metrics.json",
+    ]:
+        _write_file(run_dir / name, "{}")
+
+
+def _setup_paper(tmp_path: Path, paper_id: str, stale_manifest: bool) -> None:
+    paper_dir = tmp_path / "papers" / paper_id
+    (paper_dir / "auto").mkdir(parents=True)
+    (paper_dir / "styles").mkdir()
+    _write_file(
+        paper_dir / "paperops.yml",
+        OmegaConf.to_yaml(
+            {
+                "paper_id": paper_id,
+                "engine": "latexmk",
+                "main": "main.tex",
+                "bib": "refs.bib",
+                "paths": {
+                    "auto_dir": "auto",
+                    "figures_dir": "figures",
+                    "tables_dir": "tables",
+                },
+                "style": {"TEXINPUTS": ["styles", "."]},
+                "build": {"latexmk_args": ["-pdf", "-interaction=nonstopmode"]},
+                "inputs": {"metrics_source": "latest"},
+            }
+        ),
+    )
+    _write_file(paper_dir / "main.tex", "Example metric: \\MetricMean.\n")
+
+    run_dir = tmp_path / "runs" / "run1"
+    metrics_path = run_dir / "metrics.json"
+    metrics_path.write_text(json.dumps({"metric": 1}))
+    digest = sha256(metrics_path.read_bytes()).hexdigest()
+    if stale_manifest:
+        digest = "0" * 64
+    manifest = {
+        "source": {
+            "paper_id": paper_id,
+            "run_dir": "runs/run1",
+            "metrics_source": "latest",
+            "metrics_json_path": "runs/run1/metrics.json",
+            "metrics_json_sha256": digest,
+        },
+        "generated": {
+            "variables_tex_sha256": "0" * 64,
+            "generated_at": "2024-01-01T00:00:00Z",
+        },
+    }
+    _write_file(paper_dir / "auto" / "MANIFEST.json", json.dumps(manifest))
+
+
+def test_check_mode_dev_does_not_fail_on_structure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_min_repo(tmp_path)
+    (tmp_path / "stray").mkdir()
+    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+
+    check_command(None, mode="dev")
+    output = capsys.readouterr().out
+    assert "[WARN:STRUCTURE]" in output
+    assert "Fix:" in output
+
+
+def test_check_mode_ci_fails_on_structure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_min_repo(tmp_path)
+    (tmp_path / "stray").mkdir()
+    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+
+    with pytest.raises(SystemExit):
+        check_command(None, mode="ci")
+
+
+def test_fix_message_includes_fix_and_recheck(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_min_repo(tmp_path)
+    _setup_paper(tmp_path, "paper1", stale_manifest=True)
+    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+
+    with pytest.raises(SystemExit):
+        check_command("paper1", mode="ci")
+    output = capsys.readouterr().out
+    assert "Fix: uv run paperops build-paper-assets --paper paper1" in output
+    assert "Recheck: uv run paperops check --paper paper1 --mode ci" in output
+
+
+def test_create_exp_scaffold(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / "conf" / "exp").mkdir(parents=True)
+    (tmp_path / "src" / "paperops" / "experiments").mkdir(parents=True)
+    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+
+    create_exp_command("myexp")
+
+    assert (tmp_path / "conf" / "exp" / "myexp.yaml").exists()
+    assert (tmp_path / "src" / "paperops" / "experiments" / "myexp.py").exists()

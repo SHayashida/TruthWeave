@@ -24,3 +24,4 @@ Implementation must pass:
 - Experiments return metrics as a dict; the runner saves `metrics.json`.
 - Papers live under `papers/<paper_id>/` and must include `paperops.yml`.
 - Use `paperops create-paper` for scaffolding new papers to keep structure consistent.
+- Use `paperops create-exp` to add new experiments and avoid layout drift.

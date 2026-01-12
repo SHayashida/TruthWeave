@@ -114,5 +114,6 @@ def test_check_structure_detects_stray_top_level(tmp_path: Path) -> None:
     OmegaConf.save(OmegaConf.create(contract), conf_dir / "repo_contract.yml")
     (tmp_path / "stray").mkdir()
 
-    with pytest.raises(SystemExit):
-        check_structure.check(tmp_path)
+    issues = check_structure.check(tmp_path, mode="ci")
+    assert issues
+    assert issues[0].category == "STRUCTURE"

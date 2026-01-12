@@ -5,6 +5,8 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
+from paperops.checks.models import Issue
+
 
 def _default_contract() -> dict[str, Any]:
     return {
@@ -56,7 +58,7 @@ def _load_contract(repo_root: Path) -> dict[str, Any]:
     return merged
 
 
-def check(repo_root: Path) -> None:
+def check(repo_root: Path, mode: str) -> list[Issue]:
     contract = _load_contract(repo_root)
     top_level = contract.get("top_level", {})
     allow_dirs = set(top_level.get("allow_dirs", []))
@@ -78,8 +80,20 @@ def check(repo_root: Path) -> None:
     src_dir = repo_root / "src"
     if src_dir.exists():
         for entry in src_dir.iterdir():
-            if entry.is_dir() and entry.name != "paperops":
-                errors.append(f"Unexpected src package dir: src/{entry.name}")
+            if not entry.is_dir():
+                continue
+            if entry.name == "paperops":
+                continue
+            if entry.name.endswith(".egg-info"):
+                continue
+            errors.append(f"Unexpected src package dir: src/{entry.name}")
+
+    experiments_dir = repo_root / "src" / "paperops" / "experiments"
+    for entry in repo_root.rglob("experiments"):
+        if any(part.startswith(".") for part in entry.parts):
+            continue
+        if entry.is_dir() and entry.resolve() != experiments_dir.resolve():
+            errors.append(f"Unexpected experiments dir: {entry.relative_to(repo_root)}")
 
     papers_dir = repo_root / "papers"
     if papers_dir.exists():
@@ -92,4 +106,19 @@ def check(repo_root: Path) -> None:
                 errors.append(f"Missing paperops.yml in papers/{entry.name}")
 
     if errors:
-        raise SystemExit("Structure check failed:\n" + "\n".join(errors))
+        fix = "Move files into allowed dirs or delete stray dirs. Offenders: " + "; ".join(
+            errors
+        )
+        recheck = f"uv run paperops check --mode {mode}"
+        severity = "FAIL" if mode == "ci" else "WARN"
+        return [
+            Issue(
+                category="STRUCTURE",
+                severity=severity,
+                message="Structure check failed: " + "; ".join(errors),
+                fix=fix,
+                recheck=recheck,
+                paths=errors,
+            )
+        ]
+    return []

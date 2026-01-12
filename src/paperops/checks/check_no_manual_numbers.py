@@ -3,10 +3,25 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from paperops.checks.models import Issue
 
-def check(tex_path: Path) -> None:
+
+def check(tex_path: Path, mode: str, paper_id: str | None) -> list[Issue]:
     if not tex_path.exists():
-        raise SystemExit(f"Missing tex file: {tex_path}")
+        fix = "Create the paper main.tex or run paperops create-paper <paper_id>."
+        recheck = f"uv run paperops check --mode {mode}"
+        if paper_id:
+            recheck += f" --paper {paper_id}"
+        return [
+            Issue(
+                category="PAPER_NUMBERS",
+                severity="FAIL" if mode == "ci" else "WARN",
+                message=f"Missing tex file: {tex_path}",
+                fix=fix,
+                recheck=recheck,
+                paths=[str(tex_path)],
+            )
+        ]
 
     decimal_pattern = re.compile(r"\b\d+\.\d+\b")
     percent_pattern = re.compile(r"\b\d+%")
@@ -20,7 +35,21 @@ def check(tex_path: Path) -> None:
             violations.append(f"line {idx}: {raw_line.strip()}")
 
     if violations:
-        message = f"Manual numbers detected in {tex_path}:\n" + "\n".join(
-            violations
+        fix = (
+            "Replace inline numbers with TeX macros from auto/variables.tex or "
+            "append `% paperops-allow-number` to allowlist."
         )
-        raise SystemExit(message)
+        recheck = f"uv run paperops check --mode {mode}"
+        if paper_id:
+            recheck += f" --paper {paper_id}"
+        return [
+            Issue(
+                category="PAPER_NUMBERS",
+                severity="FAIL" if mode == "ci" else "WARN",
+                message=f"Manual numbers detected in {tex_path}",
+                fix=fix,
+                recheck=recheck,
+                paths=[str(tex_path)],
+            )
+        ]
+    return []

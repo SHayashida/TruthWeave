@@ -3,11 +3,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from paperops.papers import load_paper_config
 from paperops.utils import sha256_file
 
 
 def check(repo_root: Path, paper_dir: Path, paper_id: str) -> None:
-    manifest_path = paper_dir / "auto" / "MANIFEST.json"
+    config = load_paper_config(paper_dir / "paperops.yml")
+    auto_dir = paper_dir / config["paths"]["auto_dir"]
+    manifest_path = auto_dir / "MANIFEST.json"
     if not manifest_path.exists():
         raise SystemExit(
             f"Missing papers/{paper_id}/auto/MANIFEST.json; run build-paper-assets."

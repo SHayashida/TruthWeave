@@ -1,0 +1,24 @@
+top_level:
+  allow_dirs:
+    - .github
+    - .venv
+    - artifacts
+    - conf
+    - data
+    - paper
+    - papers
+    - runs
+    - src
+    - tests
+  allow_files:
+    - .gitignore
+    - Makefile
+    - PaperOps Template v0.md
+    - README.md
+    - Snakefile
+    - pyproject.toml
+    - uv.lock
+
+rules:
+  require_paperops_yml: true
+  allow_hidden: true

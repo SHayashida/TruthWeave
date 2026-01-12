@@ -9,12 +9,42 @@ from omegaconf import OmegaConf
 from paperops.utils import ensure_dir, write_json
 
 
+def _default_paper_config() -> dict[str, Any]:
+    return {
+        "paper_id": "",
+        "engine": "latexmk",
+        "main": "main.tex",
+        "bib": "refs.bib",
+        "paths": {
+            "auto_dir": "auto",
+            "figures_dir": "figures",
+            "tables_dir": "tables",
+        },
+        "style": {"TEXINPUTS": ["styles", "."]},
+        "build": {"latexmk_args": ["-pdf", "-interaction=nonstopmode"]},
+        "inputs": {"metrics_source": "latest"},
+    }
+
+
+def _merge_defaults(defaults: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
+    merged = defaults.copy()
+    for key, value in data.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            nested = merged[key].copy()
+            nested.update(value)
+            merged[key] = nested
+        else:
+            merged[key] = value
+    return merged
+
+
 def load_paper_config(path: Path) -> dict[str, Any]:
     cfg = OmegaConf.load(path)
     data = OmegaConf.to_container(cfg, resolve=True)
     if not isinstance(data, dict):
         raise SystemExit(f"Invalid paperops.yml at {path}")
-    return data
+    merged = _merge_defaults(_default_paper_config(), data)
+    return merged
 
 
 def discover_papers(repo_root: Path) -> dict[str, Any]:
@@ -29,18 +59,15 @@ def discover_papers(repo_root: Path) -> dict[str, Any]:
         paper_id = config.get("paper_id") or paper_dir.name
         main = config.get("main", "main.tex")
         engine = config.get("engine", "latexmk")
-        style = config.get("style", {})
-        inputs = config.get("inputs", {})
+        bib = config.get("bib", "refs.bib")
 
         entries.append(
             {
                 "paper_id": paper_id,
-                "paper_dir": str(paper_dir.relative_to(repo_root)),
-                "config_path": str(config_path.relative_to(repo_root)),
-                "main": main,
+                "path": str(paper_dir.relative_to(repo_root)),
                 "engine": engine,
-                "style": style,
-                "inputs": inputs,
+                "main": main,
+                "bib": bib,
             }
         )
 

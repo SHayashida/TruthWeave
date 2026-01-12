@@ -1,4 +1,4 @@
-.PHONY: run discover assets assets-all paper paper-all check
+.PHONY: run discover assets assets-all paper paper-all check check-all
 
 run:
 	snakemake -j 1 run_example
@@ -28,3 +28,9 @@ paper-all: discover
 
 check: discover
 	@if [ -n "$(PAPER)" ]; then uv run paperops check --paper $(PAPER); else uv run paperops check; fi
+
+check-all: discover
+	@for paper in $$(uv run python -c 'import json;print(" ".join([p["paper_id"] for p in json.load(open("artifacts/manifests/papers_index.json"))["papers"]]))'); do \
+		echo "Checking $$paper"; \
+		uv run paperops check --paper $$paper; \
+	done

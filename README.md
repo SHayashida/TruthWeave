@@ -20,6 +20,19 @@ uv run paperops check --paper example
 - `paperops build-paper --paper <paper_id>` builds the LaTeX paper using the engine in `paperops.yml`.
 - Make targets: `make assets PAPER=<paper_id>`, `make paper PAPER=<paper_id>`, `make assets-all`, `make paper-all`.
 
+## B運用（投稿先ごと）最短手順
+
+```bash
+uv run paperops create-paper demo_paper
+uv run paperops run exp=example
+uv run paperops build-paper-assets --paper demo_paper
+uv run paperops build-paper --paper demo_paper
+uv run paperops check --paper demo_paper
+make assets-all
+make paper-all
+make check-all
+```
+
 ## Pipeline config
 
 - `conf/pipeline.yaml` defines what counts as the latest run and which sources flow into assets.

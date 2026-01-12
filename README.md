@@ -27,6 +27,32 @@ uv run paperops create-exp myexp
 uv run paperops run exp=myexp
 ```
 
+## Workflow: add experiment
+
+1) `uv run paperops create-exp myexp`
+2) Ask AI to edit ONLY the created files
+3) `uv run paperops run exp=myexp`
+
+## Workflow: add analysis
+
+1) `uv run paperops create-analysis my_analysis`
+2) Ask AI to edit ONLY the created file
+3) `make analysis NAME=my_analysis`
+
+## Workflow: add dataset
+
+1) `uv run paperops create-dataset mydata`
+2) Place raw files into `data/raw/mydata/`
+
+## AI prompt template
+
+```
+You are editing this repo.
+Allowed files to edit:
+- <list paths from scaffold output>
+Do not create new directories; CI will fail.
+```
+
 ## Check modes
 
 - `paperops check` defaults to dev mode (STRUCTURE/PAPER_NUMBERS warn only).

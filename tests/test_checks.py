@@ -8,6 +8,7 @@ import pytest
 from omegaconf import OmegaConf
 
 from paperops.cli import check_command, create_exp_command
+from paperops.checks import check_structure
 
 
 def _write_file(path: Path, content: str) -> None:
@@ -104,6 +105,14 @@ def test_check_mode_ci_fails_on_structure(
 
     with pytest.raises(SystemExit):
         check_command(None, mode="ci")
+
+
+def test_structure_check_rejects_stray_dirs_in_ci(tmp_path: Path) -> None:
+    (tmp_path / "conf").mkdir()
+    (tmp_path / "stray").mkdir()
+    issues = check_structure.check(tmp_path, mode="ci")
+    assert issues
+    assert issues[0].severity == "FAIL"
 
 
 def test_fix_message_includes_fix_and_recheck(

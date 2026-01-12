@@ -95,6 +95,19 @@ def check(repo_root: Path, mode: str) -> list[Issue]:
         if entry.is_dir() and entry.resolve() != experiments_dir.resolve():
             errors.append(f"Unexpected experiments dir: {entry.relative_to(repo_root)}")
 
+    analysis_dir = repo_root / "src" / "paperops" / "analysis"
+    for entry in repo_root.rglob("analysis"):
+        if any(part.startswith(".") for part in entry.parts):
+            continue
+        if entry.is_dir() and entry.resolve() != analysis_dir.resolve():
+            errors.append(f"Unexpected analysis dir: {entry.relative_to(repo_root)}")
+
+    data_dir = repo_root / "data"
+    if data_dir.exists():
+        for entry in data_dir.iterdir():
+            if entry.is_dir() and entry.name not in {"raw", "processed"}:
+                errors.append(f"Unexpected data dir: data/{entry.name}")
+
     papers_dir = repo_root / "papers"
     if papers_dir.exists():
         for entry in papers_dir.iterdir():

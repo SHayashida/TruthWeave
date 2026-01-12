@@ -350,6 +350,17 @@ def main() -> None:
     )
     create_exp_parser.add_argument("exp_name")
 
+    create_analysis_parser = subparsers.add_parser(
+        "create-analysis", help="Create an analysis scaffold"
+    )
+    create_analysis_parser.add_argument("analysis_name")
+    create_analysis_parser.add_argument("--kind")
+
+    create_dataset_parser = subparsers.add_parser(
+        "create-dataset", help="Create a dataset scaffold"
+    )
+    create_dataset_parser.add_argument("dataset_id")
+
     args = parser.parse_args()
 
     if args.command == "run":
@@ -373,6 +384,10 @@ def main() -> None:
             raise SystemExit(1)
     elif args.command == "create-exp":
         create_exp_command(args.exp_name)
+    elif args.command == "create-analysis":
+        create_analysis_command(args.analysis_name, args.kind)
+    elif args.command == "create-dataset":
+        create_dataset_command(args.dataset_id)
     else:
         raise SystemExit(f"Unknown command: {args.command}")
 
@@ -458,6 +473,12 @@ def create_paper_command(
         (target_dir / "refs.bib").write_text(refs_bib)
 
     write_discovery_manifest(repo_root)
+    allowed_paths = [
+        str(target_dir / "paperops.yml"),
+        str(target_dir / "main.tex"),
+        str(target_dir / "refs.bib"),
+    ]
+    _print_allowed_files(repo_root, allowed_paths)
 
 
 def _to_camel(name: str) -> str:
@@ -524,6 +545,124 @@ def create_exp_command(exp_name: str) -> None:
     print(f"Created {py_path}")
     print(f"Next: edit {yaml_path} and {py_path}")
     print(f"Run: uv run paperops run exp={exp_name}")
+    _print_allowed_files(repo_root, [str(yaml_path), str(py_path)])
+
+
+def create_analysis_command(analysis_name: str, kind: str | None) -> None:
+    import re
+
+    if not re.match(r"^[a-z][a-z0-9_]*$", analysis_name):
+        raise SystemExit(
+            "analysis_name must be lowercase letters, digits, underscores, and start with a letter."
+        )
+
+    repo_root = _repo_root()
+    analysis_dir = repo_root / "src" / "paperops" / "analysis"
+    ensure_dir(analysis_dir)
+
+    init_path = analysis_dir / "__init__.py"
+    if not init_path.exists():
+        init_path.write_text("__all__ = []\n")
+
+    analysis_path = analysis_dir / f"{analysis_name}.py"
+    if analysis_path.exists():
+        raise SystemExit(f"Analysis file already exists: {analysis_path}")
+
+    kind_comment = f"# kind: {kind}\n\n" if kind else ""
+    analysis_contents = (
+        "from __future__ import annotations\n\n"
+        "import argparse\n"
+        "import json\n"
+        "from datetime import datetime, timezone\n"
+        "from pathlib import Path\n\n"
+        "from paperops.utils import find_latest_run, ensure_dir\n\n\n"
+        "def main() -> None:\n"
+        "    parser = argparse.ArgumentParser()\n"
+        "    parser.add_argument(\"--runs_dir\", default=\"runs\")\n"
+        "    parser.add_argument(\"--out_dir\", default=\"artifacts\")\n"
+        "    parser.add_argument(\"--paper\")\n"
+        "    parser.add_argument(\"--run_id\")\n"
+        "    args = parser.parse_args()\n\n"
+        "    runs_dir = Path(args.runs_dir)\n"
+        "    run_dir = runs_dir / args.run_id if args.run_id else find_latest_run(runs_dir)\n"
+        "    if run_dir is None:\n"
+        "        raise SystemExit(\n"
+        "            \"No runs found. Create one with: uv run paperops run exp=<exp_name>\"\n"
+        "        )\n"
+        "    metrics_path = Path(run_dir) / \"metrics.json\"\n"
+        "    if not metrics_path.exists():\n"
+        "        raise SystemExit(f\"Missing metrics.json in {run_dir}\")\n"
+        "    metrics = json.loads(metrics_path.read_text())\n\n"
+        "    out_dir = Path(args.out_dir) / \"metrics\"\n"
+        "    ensure_dir(out_dir)\n"
+        "    out_path = out_dir / f\"" + analysis_name + ".json\"\n"
+        "    payload = {\n"
+        "        \"analysis\": \"" + analysis_name + "\",\n"
+        "        \"run_id\": str(run_dir),\n"
+        "        \"generated_at\": datetime.now(timezone.utc).isoformat(),\n"
+        "        \"metrics\": metrics,\n"
+        "    }\n"
+        "    out_path.write_text(json.dumps(payload, indent=2, sort_keys=True))\n\n\n"
+        "if __name__ == \"__main__\":\n"
+        "    main()\n"
+    )
+    analysis_path.write_text(kind_comment + analysis_contents)
+
+    print(f"Created {analysis_path}")
+    print(
+        f"Run: uv run python -m paperops.analysis.{analysis_name} --run_id <run_id>"
+    )
+    _print_allowed_files(repo_root, [str(analysis_path)])
+
+
+def create_dataset_command(dataset_id: str) -> None:
+    import re
+
+    if not re.match(r"^[a-z][a-z0-9_]*$", dataset_id):
+        raise SystemExit(
+            "dataset_id must be lowercase letters, digits, underscores, and start with a letter."
+        )
+
+    repo_root = _repo_root()
+    data_root = repo_root / "data"
+    ensure_dir(data_root)
+
+    raw_dir = data_root / "raw" / dataset_id
+    processed_dir = data_root / "processed" / dataset_id
+    ensure_dir(raw_dir)
+    ensure_dir(processed_dir)
+
+    meta_path = raw_dir / "DATASET.md"
+    if meta_path.exists():
+        raise SystemExit(f"Dataset metadata already exists: {meta_path}")
+
+    meta_contents = (
+        "# Dataset Metadata\n\n"
+        "## Description\n"
+        "- TODO: describe the dataset.\n\n"
+        "## Source\n"
+        "- TODO: source URL or citation.\n\n"
+        "## Schema\n"
+        "- TODO: describe files/columns.\n\n"
+        "## License/Privacy\n"
+        "- TODO: license terms and privacy notes.\n"
+    )
+    meta_path.write_text(meta_contents)
+
+    print(f"Created {meta_path}")
+    print(f"Place raw files in: {raw_dir}")
+    print("Reminder: raw data is not committed by default.")
+    _print_allowed_files(repo_root, [str(meta_path)])
+
+
+def _print_allowed_files(repo_root: Path, paths: list[str]) -> None:
+    print("NEXT: Ask AI to edit ONLY these files:")
+    for path in paths:
+        rel = Path(path)
+        if rel.is_absolute():
+            rel = rel.relative_to(repo_root)
+        print(f"- {rel}")
+    print("Do not create new directories; CI will fail.")
 
 
 def _to_camel(name: str) -> str:

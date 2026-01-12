@@ -25,3 +25,4 @@ Implementation must pass:
 - Papers live under `papers/<paper_id>/` and must include `paperops.yml`.
 - Use `paperops create-paper` for scaffolding new papers to keep structure consistent.
 - Use `paperops create-exp` to add new experiments and avoid layout drift.
+- Use `paperops create-analysis` and `paperops create-dataset` for analysis/data scaffolds.

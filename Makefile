@@ -1,4 +1,4 @@
-.PHONY: run discover assets assets-all paper paper-all check check-all
+.PHONY: run discover assets assets-all paper paper-all check check-all analysis analysis-all
 
 run:
 	snakemake -j 1 run_example
@@ -33,4 +33,18 @@ check-all: discover
 	@for paper in $$(uv run python -c 'import json;print(" ".join([p["paper_id"] for p in json.load(open("artifacts/manifests/papers_index.json"))["papers"]]))'); do \
 		echo "Checking $$paper"; \
 		uv run paperops check --paper $$paper; \
+	done
+
+analysis:
+	@if [ -z "$(NAME)" ]; then echo "Set NAME=<analysis_name>"; exit 1; fi
+	@if [ -n "$(RUN_ID)" ]; then \
+		uv run python -m paperops.analysis.$(NAME) --run_id $(RUN_ID); \
+	else \
+		uv run python -m paperops.analysis.$(NAME); \
+	fi
+
+analysis-all:
+	@for name in $$(uv run python -c 'from pathlib import Path;print(" ".join([p.stem for p in Path("src/paperops/analysis").glob("*.py") if p.name != "__init__.py"]))'); do \
+		echo "Running analysis $$name"; \
+		uv run python -m paperops.analysis.$$name; \
 	done

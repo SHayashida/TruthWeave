@@ -1,7 +1,7 @@
 .PHONY: run discover assets assets-all paper paper-all check check-all analysis analysis-all
 
 run:
-	snakemake -j 1 run_example
+	uv run snakemake -j 1 run_example
 
 discover:
 	uv run paperops discover

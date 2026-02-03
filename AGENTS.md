@@ -19,6 +19,23 @@ Unless the user explicitly asks otherwise, you may ONLY edit:
 
 Everything else is read-only by default.
 
+## Skills (.codex/skills/)
+
+This repository includes structured skills for AI agents. Current skills:
+
+### paperops-build-assets
+- Rebuilds paper assets (figures/tables/variables.tex) deterministically
+- Verifies synchronization with checks
+- Auto-remediates common build failures (missing experiments, stale deps)
+
+### paperops-check
+- Runs CI checks for a given paper_id
+- Diagnoses failures with root cause analysis
+- Proposes minimal fixes (or patch plans if outside allowed edits)
+- Provides exact rerun commands
+
+**To maintain skills**: Edit files under `.codex/skills/<skill_name>/SKILL.md`. Follow the frontmatter format and include: Inputs, Rules, Output format, Common remediation playbook.
+
 ## Core commands (single source of truth)
 - Run experiment: `uv run paperops run exp=<exp_name>`
 - Discover: `uv run paperops discover`

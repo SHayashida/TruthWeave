@@ -149,6 +149,41 @@ uv run paperops run exp=myexp
 2) Ask AI to edit ONLY the created file
 3) `make analysis NAME=my_analysis`
 
+## Codex/AI Agent Skills
+
+This repository includes structured skills for AI agents (Codex, GitHub Copilot, etc.) in `.codex/skills/`:
+
+### Available Skills
+
+#### `paperops-build-assets`
+- **Purpose**: Rebuild paper assets (figures/tables/variables) deterministically for a paper_id
+- **Usage**: Automatically invoked when AI needs to regenerate paper outputs
+- **Key Commands**: `uv run paperops build-paper-assets --paper <paper_id>`
+- **Constraints**: Never manually edit `papers/<paper_id>/auto/`
+
+#### `paperops-check`
+- **Purpose**: Run PaperOps CI checks, diagnose failures, and propose fixes
+- **Usage**: Automatically invoked for validation and troubleshooting
+- **Key Commands**: `uv run paperops check --paper <paper_id> --mode ci`
+- **Capabilities**: Detects stale assets, missing metadata, structure violations
+
+### Maintaining Skills
+
+To add or modify skills:
+
+1. Create/edit skill in `.codex/skills/<skill_name>/SKILL.md`
+2. Follow the frontmatter format:
+   ```yaml
+   ---
+   name: skill-name
+   description: Brief description
+   ---
+   ```
+3. Include: Inputs, Rules, Output format, Remediation playbook
+4. Skills are automatically available to AI agents
+
+See `AGENTS.md` for the agent contract and editing constraints.
+
 ## Workflow: add dataset
 
 1) `uv run paperops create-dataset mydata`

@@ -26,3 +26,10 @@ Implementation must pass:
 - Use `paperops create-paper` for scaffolding new papers to keep structure consistent.
 - Use `paperops create-exp` to add new experiments and avoid layout drift.
 - Use `paperops create-analysis` and `paperops create-dataset` for analysis/data scaffolds.
+
+## AI Agent Skills
+
+- Structured skills are defined in `.codex/skills/` for common PaperOps workflows.
+- Skills available: `paperops-build-assets`, `paperops-check` (see `.codex/skills/<skill_name>/SKILL.md`).
+- When maintaining/adding skills, preserve the frontmatter format and include: Inputs, Rules, Output format, Remediation playbook.
+- Skills are only editable files under `.codex/skills/**`. All other paths follow the strict edit rules above.

@@ -1,6 +1,13 @@
 # TruthWeave Template v1
 
+[![CI](https://github.com/SHayashida/TruthWeave/actions/workflows/ci.yml/badge.svg)](https://github.com/SHayashida/TruthWeave/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 Reproducible research workflow template for academic papers. Ensures experiments are traceable, paper metrics are automatically synced, and manual number updates are eliminated.
+
+[日本語版 README はこちら](README.ja.md)
 
 ## Quickstart
 
@@ -12,11 +19,9 @@ uv run truthweave build-paper-assets --paper example
 uv run truthweave check --paper example
 ```
 
-## 使い方：論文執筆フロー（B運用・投稿先別TeX対応）
+## Overview
 
-※未実装の場合は該当チケットを適用してください。
-
-### メンタルモデル（流れ）
+TruthWeave enforces a structured workflow for academic paper writing:
 
 ```
 Experiment (conf/exp + src/truthweave/experiments)
@@ -26,128 +31,118 @@ Experiment (conf/exp + src/truthweave/experiments)
   -> PDF
 ```
 
-### 0. 新しい論文（投稿先）を追加
+## Core Workflows
+
+### Adding a New Paper
 
 ```bash
 uv run truthweave create-paper <paper_id>
-# ベース論文から複製する場合:
+# Or copy from an existing paper:
 uv run truthweave create-paper <paper_id> --from <base_paper_id>
 ```
 
-- cls/sty は `papers/<paper_id>/styles/` に置く（TeXINPUTS で参照）
+Conference-specific `.cls`/`.sty` files should be placed in `papers/<paper_id>/styles/`.
 
-### 1. 新しい実験を追加（AIは中身だけ編集）
+### Adding a New Experiment
 
 ```bash
 uv run truthweave create-exp <exp_name>
 ```
 
-AIに渡すテンプレ（編集許可ファイルを明示）:
+**AI Collaboration Template** (restrict editable files):
 
 ```
-このリポジトリの構成は固定です。
-編集して良いファイル:
+This repository has a fixed structure.
+Allowed files to edit:
 - conf/exp/<exp_name>.yaml
 - src/truthweave/experiments/<exp_name>.py
-それ以外のファイル/ディレクトリは作成・変更しないでください。
+Do not create or modify any other files/directories.
 ```
+
+Run the experiment:
 
 ```bash
 uv run truthweave run exp=<exp_name>
 ```
 
-### 2. データを追加（必要なら）
+### Adding a Dataset
 
 ```bash
 uv run truthweave create-dataset <dataset_id>
 ```
 
-- 生データ配置先: `data/raw/<dataset_id>/`
+Place raw data files in `data/raw/<dataset_id>/`.
 
-### 3. 解析・集計・図表を追加（必要なら）
+### Adding Analysis/Figures
 
 ```bash
 uv run truthweave create-analysis <analysis_name>
 make analysis NAME=<analysis_name>
-# 直接実行する場合:
+# Or run directly:
 uv run python -m truthweave.analysis.<analysis_name>
 ```
 
-### 4. 論文に数値・表・図を反映（更新漏れ防止）
+### Building Paper Assets
+
+Sync metrics, figures, and tables to the paper:
 
 ```bash
 uv run truthweave build-paper-assets --paper <paper_id>
 ```
 
-- `papers/<paper_id>/auto/variables.tex` を `\input` し、本文の数値はマクロ参照にする
+The paper should use `\input{auto/variables.tex}` and reference macros instead of hardcoded numbers.
 
-### 5. PDFビルド（任意）
+### Building the PDF
 
 ```bash
 uv run truthweave build-paper --paper <paper_id>
 ```
 
-- `latexmk` などの TeX ツールが必要（未インストールならエラー表示）
+Requires `latexmk` or similar LaTeX tools installed.
 
-### 6. コミット前チェック（探索/dev と CI/ci）
+### Pre-Commit Checks
 
 ```bash
 uv run truthweave check --paper <paper_id> --mode dev
 uv run truthweave check --paper <paper_id> --mode ci
 ```
 
-- dev: STRUCTURE / PAPER_NUMBERS は警告のみ
-- ci: STRUCTURE / PAPER_NUMBERS も失敗扱い
+- **dev mode**: STRUCTURE/PAPER_NUMBERS produce warnings only
+- **ci mode**: STRUCTURE/PAPER_NUMBERS cause failures
 
-### トラブルシューティング（症状 / 原因 / 解決コマンド）
+## Troubleshooting
 
-| 症状 | 原因 | 解決コマンド |
+| Symptom | Cause | Solution |
 | --- | --- | --- |
-| MANIFEST が stale | assets 未更新 | `uv run truthweave build-paper-assets --paper <paper_id>` |
-| No runs found | 実験未実行 | `uv run truthweave run exp=<exp_name>` |
-| Structure check fail | 配置ルール違反 | スキャフォールドを使い再配置 |
-| Manual inline numbers detected | 本文直書き | マクロへ置換 or `% truthweave-allow-number` |
+| MANIFEST is stale | Assets not regenerated | `uv run truthweave build-paper-assets --paper <paper_id>` |
+| No runs found | Experiment not executed | `uv run truthweave run exp=<exp_name>` |
+| Structure check fail | Repository layout violation | Use scaffolding commands to restructure |
+| Manual inline numbers detected | Hardcoded numbers in `.tex` | Replace with macros or append `% truthweave-allow-number` |
 
-### AIに依頼するときの鉄則
+## Paper Workflow
 
-- まず `create-*` で雛形を作る
-- AI には編集して良いファイルを明示し、それ以外は禁止
+- Papers live under `papers/<paper_id>/` with a `truthweave.yml` configuration
+- `truthweave discover` scans for `truthweave.yml` and writes `artifacts/manifests/papers_index.json`
+- `truthweave build-paper-assets --paper <paper_id>` writes `papers/<paper_id>/auto/variables.tex` and `papers/<paper_id>/auto/MANIFEST.json`
+- `truthweave build-paper --paper <paper_id>` builds the LaTeX paper using the engine in `truthweave.yml`
+- Make targets: `make assets PAPER=<paper_id>`, `make paper PAPER=<paper_id>`, `make assets-all`, `make paper-all`
 
-コピペ用テンプレ:
+## Workflow Summary: Add Experiment
 
-```
-このリポジトリの構成は固定です。
-編集して良いファイル:
-- <create-* の出力で表示されたファイルのみ>
-それ以外のファイル/ディレクトリは作成・変更しないでください。
-```
+1. `uv run truthweave create-exp myexp`
+2. Ask AI to edit ONLY the created files
+3. `uv run truthweave run exp=myexp`
 
-## Paper workflow
+## Workflow Summary: Add Analysis
 
-- Papers live under `papers/<paper_id>/` with a `truthweave.yml` configuration.
-- `paperops discover` scans for `truthweave.yml` and writes `artifacts/manifests/papers_index.json`.
-- `paperops build-paper-assets --paper <paper_id>` writes `papers/<paper_id>/auto/variables.tex` and `papers/<paper_id>/auto/MANIFEST.json`.
-- `paperops build-paper --paper <paper_id>` builds the LaTeX paper using the engine in `truthweave.yml`.
-- Make targets: `make assets PAPER=<paper_id>`, `make paper PAPER=<paper_id>`, `make assets-all`, `make paper-all`.
+1. `uv run truthweave create-analysis my_analysis`
+2. Ask AI to edit ONLY the created file
+3. `make analysis NAME=my_analysis`
 
-## How to add experiments (use create-exp)
+## Workflow Summary: Add Dataset
 
-```bash
-uv run truthweave create-exp myexp
-uv run truthweave run exp=myexp
-```
-
-## Workflow: add experiment
-
-1) `uv run truthweave create-exp myexp`
-2) Ask AI to edit ONLY the created files
-3) `uv run truthweave run exp=myexp`
-
-## Workflow: add analysis
-
-1) `uv run truthweave create-analysis my_analysis`
-2) Ask AI to edit ONLY the created file
-3) `make analysis NAME=my_analysis`
+1. `uv run truthweave create-dataset mydata`
+2. Place raw files into `data/raw/mydata/`
 
 ## Codex/AI Agent Skills
 
@@ -182,14 +177,11 @@ To add or modify skills:
 3. Include: Inputs, Rules, Output format, Remediation playbook
 4. Skills are automatically available to AI agents
 
-See `AGENTS.md` for the agent contract and editing constraints.
+See [AGENTS.md](AGENTS.md) for the agent contract and editing constraints.
 
-## Workflow: add dataset
+## AI Prompt Template
 
-1) `uv run truthweave create-dataset mydata`
-2) Place raw files into `data/raw/mydata/`
-
-## AI prompt template
+When collaborating with AI agents:
 
 ```
 You are editing this repo.
@@ -198,12 +190,12 @@ Allowed files to edit:
 Do not create new directories; CI will fail.
 ```
 
-## Check modes
+## Check Modes
 
-- `paperops check` defaults to dev mode (STRUCTURE/PAPER_NUMBERS warn only).
-- `paperops check --mode ci` treats STRUCTURE/PAPER_NUMBERS as failures.
+- `truthweave check` defaults to **dev mode** (STRUCTURE/PAPER_NUMBERS warn only)
+- `truthweave check --mode ci` treats STRUCTURE/PAPER_NUMBERS as failures
 
-## B運用（投稿先ごと）最短手順
+## Multi-Paper Workflow (Fastest Path)
 
 ```bash
 uv run truthweave create-paper demo_paper
@@ -216,6 +208,11 @@ make paper-all
 make check-all
 ```
 
-## Pipeline config
+## Pipeline Configuration
 
-- `conf/pipeline.yaml` defines what counts as the latest run and which sources flow into assets.
+`conf/pipeline.yaml` defines what counts as the latest run and which sources flow into assets.
+
+## License
+
+See [LICENSE](LICENSE) file for details.
+

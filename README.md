@@ -1,6 +1,6 @@
-# PaperOps Template v0
+# PaperOps Template v1
 
-This repository implements the PaperOps template described in `PaperOps Template v0.md`.
+Reproducible research workflow template for academic papers. Ensures experiments are traceable, paper metrics are automatically synced, and manual number updates are eliminated.
 
 ## Quickstart
 

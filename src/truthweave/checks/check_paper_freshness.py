@@ -3,18 +3,18 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from paperops.checks.models import Issue
-from paperops.papers import load_paper_config
-from paperops.utils import sha256_file
+from truthweave.checks.models import Issue
+from truthweave.papers import load_paper_config
+from truthweave.utils import sha256_file
 
 
 def check(repo_root: Path, paper_dir: Path, paper_id: str, mode: str) -> list[Issue]:
-    config = load_paper_config(paper_dir / "paperops.yml")
+    config = load_paper_config(paper_dir / "truthweave.yml")
     auto_dir = paper_dir / config["paths"]["auto_dir"]
     manifest_path = auto_dir / "MANIFEST.json"
     if not manifest_path.exists():
-        fix = f"uv run paperops build-paper-assets --paper {paper_id}"
-        recheck = f"uv run paperops check --paper {paper_id} --mode {mode}"
+        fix = f"uv run truthweave build-paper-assets --paper {paper_id}"
+        recheck = f"uv run truthweave check --paper {paper_id} --mode {mode}"
         return [
             Issue(
                 category="FRESHNESS",
@@ -32,8 +32,8 @@ def check(repo_root: Path, paper_dir: Path, paper_id: str, mode: str) -> list[Is
     manifest = json.loads(manifest_path.read_text())
     metrics_path = repo_root / manifest["source"]["metrics_json_path"]
     if not metrics_path.exists():
-        fix = "uv run paperops run exp=example"
-        recheck = f"uv run paperops check --paper {paper_id} --mode {mode}"
+        fix = "uv run truthweave run exp=example"
+        recheck = f"uv run truthweave check --paper {paper_id} --mode {mode}"
         return [
             Issue(
                 category="FRESHNESS",
@@ -47,8 +47,8 @@ def check(repo_root: Path, paper_dir: Path, paper_id: str, mode: str) -> list[Is
     expected = manifest["source"]["metrics_json_sha256"]
     actual = sha256_file(metrics_path)
     if actual != expected:
-        fix = f"uv run paperops build-paper-assets --paper {paper_id}"
-        recheck = f"uv run paperops check --paper {paper_id} --mode {mode}"
+        fix = f"uv run truthweave build-paper-assets --paper {paper_id}"
+        recheck = f"uv run truthweave check --paper {paper_id} --mode {mode}"
         return [
             Issue(
                 category="FRESHNESS",

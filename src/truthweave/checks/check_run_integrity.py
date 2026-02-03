@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from paperops.checks.models import Issue
-from paperops.utils import find_latest_run
+from truthweave.checks.models import Issue
+from truthweave.utils import find_latest_run
 
 
 REQUIRED_FILES = [
@@ -23,9 +23,9 @@ REQUIRED_DIRS = [
 def check(runs_dir: Path, mode: str, paper_id: str | None = None) -> list[Issue]:
     run_dir = find_latest_run(runs_dir)
     if run_dir is None:
-        fix = "uv run paperops run exp=example"
+        fix = "uv run truthweave run exp=example"
         recheck = (
-            f"uv run paperops check --mode {mode}"
+            f"uv run truthweave check --mode {mode}"
             + (f" --paper {paper_id}" if paper_id else "")
         )
         return [
@@ -44,9 +44,9 @@ def check(runs_dir: Path, mode: str, paper_id: str | None = None) -> list[Issue]
         name for name in REQUIRED_DIRS if not (run_dir / name).is_dir()
     ]
     if missing:
-        fix = "uv run paperops run exp=example"
+        fix = "uv run truthweave run exp=example"
         recheck = (
-            f"uv run paperops check --mode {mode}"
+            f"uv run truthweave check --mode {mode}"
             + (f" --paper {paper_id}" if paper_id else "")
         )
         return [

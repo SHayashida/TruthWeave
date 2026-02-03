@@ -5,7 +5,7 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from paperops.checks.models import Issue
+from truthweave.checks.models import Issue
 
 
 def _default_contract() -> dict[str, Any]:
@@ -82,20 +82,20 @@ def check(repo_root: Path, mode: str) -> list[Issue]:
         for entry in src_dir.iterdir():
             if not entry.is_dir():
                 continue
-            if entry.name == "paperops":
+            if entry.name == "truthweave":
                 continue
             if entry.name.endswith(".egg-info"):
                 continue
             errors.append(f"Unexpected src package dir: src/{entry.name}")
 
-    experiments_dir = repo_root / "src" / "paperops" / "experiments"
+    experiments_dir = repo_root / "src" / "truthweave" / "experiments"
     for entry in repo_root.rglob("experiments"):
         if any(part.startswith(".") for part in entry.parts):
             continue
         if entry.is_dir() and entry.resolve() != experiments_dir.resolve():
             errors.append(f"Unexpected experiments dir: {entry.relative_to(repo_root)}")
 
-    analysis_dir = repo_root / "src" / "paperops" / "analysis"
+    analysis_dir = repo_root / "src" / "truthweave" / "analysis"
     for entry in repo_root.rglob("analysis"):
         if any(part.startswith(".") for part in entry.parts):
             continue
@@ -114,15 +114,15 @@ def check(repo_root: Path, mode: str) -> list[Issue]:
             if entry.is_file():
                 errors.append(f"Unexpected file under papers/: {entry.name}")
                 continue
-            paperops_yml = entry / "paperops.yml"
+            paperops_yml = entry / "truthweave.yml"
             if rules.get("require_paperops_yml", True) and not paperops_yml.exists():
-                errors.append(f"Missing paperops.yml in papers/{entry.name}")
+                errors.append(f"Missing truthweave.yml in papers/{entry.name}")
 
     if errors:
         fix = "Move files into allowed dirs or delete stray dirs. Offenders: " + "; ".join(
             errors
         )
-        recheck = f"uv run paperops check --mode {mode}"
+        recheck = f"uv run truthweave check --mode {mode}"
         severity = "FAIL" if mode == "ci" else "WARN"
         return [
             Issue(

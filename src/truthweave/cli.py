@@ -12,21 +12,21 @@ from typing import Any
 import hydra
 from omegaconf import OmegaConf
 
-from paperops.checks import (
+from truthweave.checks import (
     check_no_manual_numbers,
     check_paper_freshness,
     check_run_integrity,
     check_structure,
 )
-from paperops.checks.models import Issue
-from paperops.papers import get_paper_by_id, load_paper_config, write_discovery_manifest
-from paperops.registry import get_experiment_class
-from paperops.runner import ExperimentRunner
-from paperops.utils import ensure_dir, find_latest_run, sha256_file, write_json
+from truthweave.checks.models import Issue
+from truthweave.papers import get_paper_by_id, load_paper_config, write_discovery_manifest
+from truthweave.registry import get_experiment_class
+from truthweave.runner import ExperimentRunner
+from truthweave.utils import ensure_dir, find_latest_run, sha256_file, write_json
 
 
 def _repo_root() -> Path:
-    override = os.environ.get("PAPEROPS_REPO_ROOT")
+    override = os.environ.get("TRUTHWEAVE_REPO_ROOT")
     if override:
         return Path(override).resolve()
     return Path(__file__).resolve().parents[2]
@@ -90,7 +90,7 @@ def _build_paper_assets(paper_id: str) -> None:
     repo_root = _repo_root()
     paper = get_paper_by_id(repo_root, paper_id)
     paper_dir = repo_root / paper["path"]
-    config = load_paper_config(paper_dir / "paperops.yml")
+    config = load_paper_config(paper_dir / "truthweave.yml")
     inputs = config.get("inputs", {})
     metrics_source = inputs.get("metrics_source")
 
@@ -133,7 +133,7 @@ def _build_paper(paper_id: str) -> None:
     repo_root = _repo_root()
     paper = get_paper_by_id(repo_root, paper_id)
     paper_dir = repo_root / paper["path"]
-    config = load_paper_config(paper_dir / "paperops.yml")
+    config = load_paper_config(paper_dir / "truthweave.yml")
     main_path = paper_dir / config["main"]
     if not main_path.exists():
         raise SystemExit(f"Missing main tex for {paper_id}: {main_path}")
@@ -280,7 +280,7 @@ def check_command(paper_id: str | None, mode: str) -> None:
     if paper_id:
         paper = get_paper_by_id(repo_root, paper_id)
         paper_dir = repo_root / paper["path"]
-        config = load_paper_config(paper_dir / "paperops.yml")
+        config = load_paper_config(paper_dir / "truthweave.yml")
         issues.extend(
             check_paper_freshness.check(repo_root, paper_dir, paper_id, mode)
         )
@@ -295,7 +295,7 @@ def check_command(paper_id: str | None, mode: str) -> None:
             issues.extend(
                 check_paper_freshness.check(repo_root, paper_dir, pid, mode)
             )
-            config = load_paper_config(paper_dir / "paperops.yml")
+            config = load_paper_config(paper_dir / "truthweave.yml")
             tex_path = paper_dir / config.get("main", "main.tex")
             issues.extend(check_no_manual_numbers.check(tex_path, mode, pid))
 
@@ -315,7 +315,7 @@ def check_command(paper_id: str | None, mode: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="paperops")
+    parser = argparse.ArgumentParser(prog="truthweave")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     run_parser = subparsers.add_parser("run", help="Run an experiment")
@@ -424,7 +424,7 @@ def create_paper_command(
         if build_dir.exists():
             shutil.rmtree(build_dir)
 
-        config_path = target_dir / "paperops.yml"
+        config_path = target_dir / "truthweave.yml"
         config = load_paper_config(config_path)
         config["paper_id"] = paper_id
         if engine:
@@ -451,7 +451,7 @@ def create_paper_command(
             "build": {"latexmk_args": ["-pdf", "-interaction=nonstopmode"]},
             "inputs": {"metrics_source": "latest"},
         }
-        OmegaConf.save(OmegaConf.create(config), target_dir / "paperops.yml")
+        OmegaConf.save(OmegaConf.create(config), target_dir / "truthweave.yml")
 
         main_tex = (
             "\\\\documentclass{article}\\n"
@@ -474,7 +474,7 @@ def create_paper_command(
 
     write_discovery_manifest(repo_root)
     allowed_paths = [
-        str(target_dir / "paperops.yml"),
+        str(target_dir / "truthweave.yml"),
         str(target_dir / "main.tex"),
         str(target_dir / "refs.bib"),
     ]
@@ -495,7 +495,7 @@ def create_exp_command(exp_name: str) -> None:
 
     repo_root = _repo_root()
     conf_dir = repo_root / "conf" / "exp"
-    src_dir = repo_root / "src" / "paperops" / "experiments"
+    src_dir = repo_root / "src" / "truthweave" / "experiments"
     ensure_dir(conf_dir)
     ensure_dir(src_dir)
 
@@ -516,8 +516,8 @@ def create_exp_command(exp_name: str) -> None:
     class_name = f"{_to_camel(exp_name)}Experiment"
     py_contents = (
         "from __future__ import annotations\n\n"
-        "from paperops.registry import register_experiment\n"
-        "from paperops.runner import BaseExperiment\n\n\n"
+        "from truthweave.registry import register_experiment\n"
+        "from truthweave.runner import BaseExperiment\n\n\n"
         f"@register_experiment(\"{exp_name}\")\n"
         f"class {class_name}(BaseExperiment):\n"
         "    def setup(self) -> None:\n"
@@ -533,7 +533,7 @@ def create_exp_command(exp_name: str) -> None:
     py_path.write_text(py_contents)
 
     init_path = src_dir / "__init__.py"
-    import_line = f"from paperops.experiments.{exp_name} import {class_name}\n"
+    import_line = f"from truthweave.experiments.{exp_name} import {class_name}\n"
     if init_path.exists():
         existing = init_path.read_text()
         if import_line not in existing:
@@ -544,7 +544,7 @@ def create_exp_command(exp_name: str) -> None:
     print(f"Created {yaml_path}")
     print(f"Created {py_path}")
     print(f"Next: edit {yaml_path} and {py_path}")
-    print(f"Run: uv run paperops run exp={exp_name}")
+    print(f"Run: uv run truthweave run exp={exp_name}")
     _print_allowed_files(repo_root, [str(yaml_path), str(py_path)])
 
 
@@ -557,7 +557,7 @@ def create_analysis_command(analysis_name: str, kind: str | None) -> None:
         )
 
     repo_root = _repo_root()
-    analysis_dir = repo_root / "src" / "paperops" / "analysis"
+    analysis_dir = repo_root / "src" / "truthweave" / "analysis"
     ensure_dir(analysis_dir)
 
     init_path = analysis_dir / "__init__.py"
@@ -575,7 +575,7 @@ def create_analysis_command(analysis_name: str, kind: str | None) -> None:
         "import json\n"
         "from datetime import datetime, timezone\n"
         "from pathlib import Path\n\n"
-        "from paperops.utils import find_latest_run, ensure_dir\n\n\n"
+        "from truthweave.utils import find_latest_run, ensure_dir\n\n\n"
         "def main() -> None:\n"
         "    parser = argparse.ArgumentParser()\n"
         "    parser.add_argument(\"--runs_dir\", default=\"runs\")\n"
@@ -587,7 +587,7 @@ def create_analysis_command(analysis_name: str, kind: str | None) -> None:
         "    run_dir = runs_dir / args.run_id if args.run_id else find_latest_run(runs_dir)\n"
         "    if run_dir is None:\n"
         "        raise SystemExit(\n"
-        "            \"No runs found. Create one with: uv run paperops run exp=<exp_name>\"\n"
+        "            \"No runs found. Create one with: uv run truthweave run exp=<exp_name>\"\n"
         "        )\n"
         "    metrics_path = Path(run_dir) / \"metrics.json\"\n"
         "    if not metrics_path.exists():\n"
@@ -610,7 +610,7 @@ def create_analysis_command(analysis_name: str, kind: str | None) -> None:
 
     print(f"Created {analysis_path}")
     print(
-        f"Run: uv run python -m paperops.analysis.{analysis_name} --run_id <run_id>"
+        f"Run: uv run python -m truthweave.analysis.{analysis_name} --run_id <run_id>"
     )
     _print_allowed_files(repo_root, [str(analysis_path)])
 

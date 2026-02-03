@@ -8,8 +8,8 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from paperops import snapshot
-from paperops.utils import ensure_dir, write_json
+from truthweave import snapshot
+from truthweave.utils import ensure_dir, write_json
 
 
 class BaseExperiment(ABC):

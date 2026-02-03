@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from paperops.cli import check_command, create_exp_command
-from paperops.checks import check_structure
+from truthweave.cli import check_command, create_exp_command
+from truthweave.checks import check_structure
 
 
 def _write_file(path: Path, content: str) -> None:
@@ -20,7 +20,7 @@ def _setup_min_repo(tmp_path: Path) -> None:
     (tmp_path / "conf").mkdir()
     (tmp_path / "runs").mkdir()
     (tmp_path / "papers").mkdir()
-    (tmp_path / "src" / "paperops").mkdir(parents=True)
+    (tmp_path / "src" / "truthweave").mkdir(parents=True)
 
     run_dir = tmp_path / "runs" / "run1"
     (run_dir / "artifacts").mkdir(parents=True)
@@ -41,7 +41,7 @@ def _setup_paper(tmp_path: Path, paper_id: str, stale_manifest: bool) -> None:
     (paper_dir / "auto").mkdir(parents=True)
     (paper_dir / "styles").mkdir()
     _write_file(
-        paper_dir / "paperops.yml",
+        paper_dir / "truthweave.yml",
         OmegaConf.to_yaml(
             {
                 "paper_id": paper_id,
@@ -88,7 +88,7 @@ def test_check_mode_dev_does_not_fail_on_structure(
 ) -> None:
     _setup_min_repo(tmp_path)
     (tmp_path / "stray").mkdir()
-    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+    monkeypatch.setenv("TRUTHWEAVE_REPO_ROOT", str(tmp_path))
 
     check_command(None, mode="dev")
     output = capsys.readouterr().out
@@ -101,7 +101,7 @@ def test_check_mode_ci_fails_on_structure(
 ) -> None:
     _setup_min_repo(tmp_path)
     (tmp_path / "stray").mkdir()
-    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+    monkeypatch.setenv("TRUTHWEAVE_REPO_ROOT", str(tmp_path))
 
     with pytest.raises(SystemExit):
         check_command(None, mode="ci")
@@ -120,21 +120,21 @@ def test_fix_message_includes_fix_and_recheck(
 ) -> None:
     _setup_min_repo(tmp_path)
     _setup_paper(tmp_path, "paper1", stale_manifest=True)
-    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+    monkeypatch.setenv("TRUTHWEAVE_REPO_ROOT", str(tmp_path))
 
     with pytest.raises(SystemExit):
         check_command("paper1", mode="ci")
     output = capsys.readouterr().out
-    assert "Fix: uv run paperops build-paper-assets --paper paper1" in output
-    assert "Recheck: uv run paperops check --paper paper1 --mode ci" in output
+    assert "Fix: uv run truthweave build-paper-assets --paper paper1" in output
+    assert "Recheck: uv run truthweave check --paper paper1 --mode ci" in output
 
 
 def test_create_exp_scaffold(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     (tmp_path / "conf" / "exp").mkdir(parents=True)
-    (tmp_path / "src" / "paperops" / "experiments").mkdir(parents=True)
-    monkeypatch.setenv("PAPEROPS_REPO_ROOT", str(tmp_path))
+    (tmp_path / "src" / "truthweave" / "experiments").mkdir(parents=True)
+    monkeypatch.setenv("TRUTHWEAVE_REPO_ROOT", str(tmp_path))
 
     create_exp_command("myexp")
 
     assert (tmp_path / "conf" / "exp" / "myexp.yaml").exists()
-    assert (tmp_path / "src" / "paperops" / "experiments" / "myexp.py").exists()
+    assert (tmp_path / "src" / "truthweave" / "experiments" / "myexp.py").exists()

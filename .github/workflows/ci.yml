@@ -20,4 +20,4 @@ jobs:
       - name: Build assets
         run: make assets-all
       - name: Check
-        run: uv run paperops check --mode ci
+        run: uv run truthweave check --mode ci

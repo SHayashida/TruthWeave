@@ -3,7 +3,7 @@ defaults:
   - exp: example
 
 project:
-  name: paperops-template
+  name: truthweave-template
   runs_dir: runs
 
 runtime:

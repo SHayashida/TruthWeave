@@ -6,7 +6,7 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from paperops.utils import ensure_dir, write_json
+from truthweave.utils import ensure_dir, write_json
 
 
 def _default_paper_config() -> dict[str, Any]:
@@ -42,7 +42,7 @@ def load_paper_config(path: Path) -> dict[str, Any]:
     cfg = OmegaConf.load(path)
     data = OmegaConf.to_container(cfg, resolve=True)
     if not isinstance(data, dict):
-        raise SystemExit(f"Invalid paperops.yml at {path}")
+        raise SystemExit(f"Invalid truthweave.yml at {path}")
     merged = _merge_defaults(_default_paper_config(), data)
     return merged
 
@@ -53,7 +53,7 @@ def discover_papers(repo_root: Path) -> dict[str, Any]:
         return {"papers": [], "generated_at": datetime.now(timezone.utc).isoformat()}
 
     entries = []
-    for config_path in sorted(papers_dir.rglob("paperops.yml")):
+    for config_path in sorted(papers_dir.rglob("truthweave.yml")):
         paper_dir = config_path.parent
         config = load_paper_config(config_path)
         paper_id = config.get("paper_id") or paper_dir.name

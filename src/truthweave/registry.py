@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Type
 
-from paperops.runner import BaseExperiment
+from truthweave.runner import BaseExperiment
 
 _REGISTRY: Dict[str, Type[BaseExperiment]] = {}
 

@@ -3,13 +3,13 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from paperops.checks.models import Issue
+from truthweave.checks.models import Issue
 
 
 def check(tex_path: Path, mode: str, paper_id: str | None) -> list[Issue]:
     if not tex_path.exists():
         fix = "Create the paper main.tex or run paperops create-paper <paper_id>."
-        recheck = f"uv run paperops check --mode {mode}"
+        recheck = f"uv run truthweave check --mode {mode}"
         if paper_id:
             recheck += f" --paper {paper_id}"
         return [
@@ -28,7 +28,7 @@ def check(tex_path: Path, mode: str, paper_id: str | None) -> list[Issue]:
 
     violations = []
     for idx, raw_line in enumerate(tex_path.read_text().splitlines(), start=1):
-        if "paperops-allow-number" in raw_line:
+        if "truthweave-allow-number" in raw_line:
             continue
         line = raw_line.split("%", 1)[0]
         if decimal_pattern.search(line) or percent_pattern.search(line):
@@ -37,9 +37,9 @@ def check(tex_path: Path, mode: str, paper_id: str | None) -> list[Issue]:
     if violations:
         fix = (
             "Replace inline numbers with TeX macros from auto/variables.tex or "
-            "append `% paperops-allow-number` to allowlist."
+            "append `% truthweave-allow-number` to allowlist."
         )
-        recheck = f"uv run paperops check --mode {mode}"
+        recheck = f"uv run truthweave check --mode {mode}"
         if paper_id:
             recheck += f" --paper {paper_id}"
         return [

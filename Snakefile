@@ -16,14 +16,14 @@ rule run_example:
     output:
         directory("runs")
     shell:
-        "uv run paperops run exp=example"
+        "uv run truthweave run exp=example"
 
 
 rule discover:
     output:
         "artifacts/manifests/papers_index.json"
     shell:
-        "uv run paperops discover"
+        "uv run truthweave discover"
 
 
 rule assets_per_paper:
@@ -33,7 +33,7 @@ rule assets_per_paper:
         "papers/{paper}/auto/variables.tex",
         "papers/{paper}/auto/MANIFEST.json"
     shell:
-        "uv run paperops build-paper-assets --paper {wildcards.paper}"
+        "uv run truthweave build-paper-assets --paper {wildcards.paper}"
 
 
 rule assets_all:
@@ -52,7 +52,7 @@ rule paper_per_paper:
     output:
         "papers/{paper}/build/main.pdf"
     shell:
-        "uv run paperops build-paper --paper {wildcards.paper}"
+        "uv run truthweave build-paper --paper {wildcards.paper}"
 
 
 rule paper_all:
@@ -66,4 +66,4 @@ rule paper_all:
 
 rule check:
     shell:
-        "uv run paperops check"
+        "uv run truthweave check"

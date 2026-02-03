@@ -13,12 +13,12 @@ top_level:
   allow_files:
     - .gitignore
     - Makefile
-    - PaperOps Template v0.md
+    - TruthWeave Template v0.md
     - README.md
     - Snakefile
     - pyproject.toml
     - uv.lock
 
 rules:
-  require_paperops_yml: true
+  require_truthweave_yml: true
   allow_hidden: true

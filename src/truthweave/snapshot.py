@@ -9,7 +9,7 @@ from typing import Any
 import psutil
 from omegaconf import OmegaConf
 
-from paperops.utils import write_json
+from truthweave.utils import write_json
 
 
 def save_config_resolved(run_dir: Path, cfg: Any) -> None:

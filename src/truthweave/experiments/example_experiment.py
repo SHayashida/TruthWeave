@@ -3,8 +3,8 @@ from __future__ import annotations
 import random
 from statistics import mean
 
-from paperops.registry import register_experiment
-from paperops.runner import BaseExperiment
+from truthweave.registry import register_experiment
+from truthweave.runner import BaseExperiment
 
 
 @register_experiment("example")

@@ -6,9 +6,9 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from paperops.cli import create_paper_command, discover_command
-from paperops.papers import load_paper_config
-from paperops.checks import check_structure
+from truthweave.cli import create_paper_command, discover_command
+from truthweave.papers import load_paper_config
+from truthweave.checks import check_structure
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -33,11 +33,11 @@ def test_create_paper_creates_structure() -> None:
     create_paper_command(paper_id, None, None)
     try:
         paper_dir = PAPERS_DIR / paper_id
-        assert (paper_dir / "paperops.yml").exists()
+        assert (paper_dir / "truthweave.yml").exists()
         assert (paper_dir / "main.tex").exists()
         assert (paper_dir / "refs.bib").exists()
         assert (paper_dir / "styles" / ".gitkeep").exists()
-        cfg = load_paper_config(paper_dir / "paperops.yml")
+        cfg = load_paper_config(paper_dir / "truthweave.yml")
         assert cfg["paper_id"] == paper_id
     finally:
         _cleanup_paper(paper_id)
@@ -71,7 +71,7 @@ def test_create_paper_clone() -> None:
         "build": {"latexmk_args": ["-pdf", "-interaction=nonstopmode"]},
         "inputs": {"metrics_source": "latest"},
     }
-    OmegaConf.save(OmegaConf.create(config), base_dir / "paperops.yml")
+    OmegaConf.save(OmegaConf.create(config), base_dir / "truthweave.yml")
     (base_dir / "main.tex").write_text("\\input{auto/variables.tex}")
     (base_dir / "refs.bib").write_text("@article{a}")
 
@@ -80,7 +80,7 @@ def test_create_paper_clone() -> None:
         new_dir = PAPERS_DIR / new_id
         assert (new_dir / "styles" / "style.sty").exists()
         assert not (new_dir / "auto" / "generated.txt").exists()
-        cfg = load_paper_config(new_dir / "paperops.yml")
+        cfg = load_paper_config(new_dir / "truthweave.yml")
         assert cfg["paper_id"] == new_id
     finally:
         _cleanup_paper(base_id)

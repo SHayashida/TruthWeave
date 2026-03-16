@@ -12,8 +12,10 @@ top_level:
     - tests
   allow_files:
     - .gitignore
+    - AGENTS.md
     - Makefile
     - TruthWeave Template v0.md
+    - README.ja.md
     - README.md
     - Snakefile
     - pyproject.toml

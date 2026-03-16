@@ -4,7 +4,7 @@ from pathlib import Path
 
 index_path = Path("artifacts/manifests/papers_index.json")
 if not index_path.exists():
-    subprocess.run(["uv", "run", "paperops", "discover"], check=True)
+    subprocess.run(["uv", "run", "truthweave", "discover"], check=True)
 
 papers = []
 if index_path.exists():
